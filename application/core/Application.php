@@ -91,15 +91,19 @@ abstract class Application
 
 	public function run()
 	{
-		$params = $this->router->resplve($this->request->getPathInfo());
-		if($params === false) {
-			// todo-A
+		try {
+			$params = $this->router->resplve($this->request->getPathInfo());
+			if($params === false) {
+				throw new HttpNotFoundException('No route found for ', $this->request->getPathInfo());
+			}
+
+			$controller = $param['controller'];
+			$action = $param['action'];
+
+			$this->runAction($controller, $actin, $params);
+		} catch(HttpNotFoundException $e) {
+			$this->render404Page($e);
 		}
-
-		$controller = $param['controller'];
-		$action = $param['action'];
-
-		$this->runAction($controller, $actin, $params);
 		$this->response->send();
 	}
 
@@ -108,7 +112,7 @@ abstract class Application
 		$controller_class = ucfirst($controller_name) . 'Controller';
 		$controller = $this->findCOntroller($controller_class);
 		if($controller === flase) {
-			// todo-B
+			throw new HttpNotFoundException($controller_class . ' controller is not found.');
 		}
 
 		$content = $controller->run($action, $params);
@@ -130,5 +134,26 @@ abstract class Application
 			}
 		}
 		return new $controller_class($this);
+	}
+
+	protected function render404Page($e)
+	{
+		$this->response->setStatusCode(404, 'Not Found');
+		$message = $this->isDebugMode() ? $e->getMassage() : 'Page not found.';
+		$message = htmlspecialchars($message, ENT_QUOTES, 'UTF-8');
+
+		$this->response->setContent(<<<EOF
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html>
+<head>
+	<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+	<title>404</title>
+</head>
+<body>
+	{$message}
+</body>
+</html>
+EOF
+		);
 	}
 }
